@@ -103,7 +103,17 @@ bot.command("list", async (ctx) => {
         const onlineStatus = 0;
         await Promise.all(
           data.devices.map(async (device) => {
-            const isOnline = `🟢 Connected:`;
+            const currentTime = new Date();
+            const now = currentTime.toISOString();
+            const lastSeen = new Date(device.lastSeen);
+            const diffInMinutes =
+              (currentTime.getTime() - lastSeen.getTime()) / (1000 * 60);
+            let isOnline;
+            if (diffInMinutes <= 5) {
+              isOnline = `🟢 Connected:`;
+            } else {
+              isOnline = `🔴 Disconnected:`;
+            }
             await ctx.reply(
               `${isOnline}\n\n<b>${device.hostname}\n\nAddresses:</b>\n<i>IPv4: <code>${device.addresses[0]}</code>\nIPv6: <code>${device.addresses[1]}</code></i>`,
               {
