@@ -100,7 +100,6 @@ bot.command("list", async (ctx) => {
       try {
         const devices = await getDevices();
         const data = JSON.parse(devices);
-        const onlineStatus = 0;
         await Promise.all(
           data.devices.map(async (device) => {
             const currentTime = new Date();
@@ -127,7 +126,35 @@ bot.command("list", async (ctx) => {
       }
     }
 
-    await main();
+    try {
+      await main();
+    } catch (error) {
+      if (error instanceof GrammyError) {
+        if (error.message.includes("Forbidden: bot was blocked by the user")) {
+          console.log("Bot was blocked by the user");
+        } else if (error.message.includes("Call to 'sendMessage' failed!")) {
+          console.log("Error sending message: ", error);
+          await ctx.reply(`*Error contacting Telegram.*`, {
+            parse_mode: "Markdown",
+            reply_to_message_id: ctx.msg.message_id,
+          });
+        } else {
+          await ctx.reply(`*An error occurred: ${error.message}*`, {
+            parse_mode: "Markdown",
+            reply_to_message_id: ctx.msg.message_id,
+          });
+        }
+        console.log(`Error sending message: ${error.message}`);
+        return;
+      } else {
+        console.log(`An error occured:`, error);
+        await ctx.reply(`*An error occurred.*\n_Error: ${error.message}_`, {
+          parse_mode: "Markdown",
+          reply_to_message_id: ctx.msg.message_id,
+        });
+        return;
+      }
+    }
   }
 });
 
@@ -191,9 +218,9 @@ bot.on("msg", async (ctx) => {
       if (error instanceof GrammyError) {
         if (error.message.includes("Forbidden: bot was blocked by the user")) {
           console.log("Bot was blocked by the user");
-        } else if (error.message.includes("Call to 'sendVideo' failed!")) {
-          console.log("Error sending media.", error);
-          await ctx.reply(`*Error contacting YouTube.*`, {
+        } else if (error.message.includes("Call to 'sendMessage' failed!")) {
+          console.log("Error sending message: ", error);
+          await ctx.reply(`*Error contacting Telegram.*`, {
             parse_mode: "Markdown",
             reply_to_message_id: ctx.msg.message_id,
           });
@@ -207,10 +234,10 @@ bot.on("msg", async (ctx) => {
         return;
       } else {
         console.log(`An error occured:`, error);
-        await ctx.reply(
-          `*An error occurred. Are you sure you sent a valid YouTube shorts link?*\n_Error: ${error.message}_`,
-          { parse_mode: "Markdown", reply_to_message_id: ctx.msg.message_id }
-        );
+        await ctx.reply(`*An error occurred.*\n_Error: ${error.message}_`, {
+          parse_mode: "Markdown",
+          reply_to_message_id: ctx.msg.message_id,
+        });
         return;
       }
     }
