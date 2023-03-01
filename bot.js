@@ -100,11 +100,16 @@ bot.command("list", async (ctx) => {
       try {
         const devices = await getDevices();
         const data = JSON.parse(devices);
+        const onlineStatus = 0;
         await Promise.all(
           data.devices.map(async (device) => {
-            await ctx.reply(`<b>${device.hostname}</b>\n${device.addresses}`, {
-              parse_mode: "HTML",
-            });
+            const isOnline = `🟢 Connected:`;
+            await ctx.reply(
+              `${isOnline}\n\n<b>${device.hostname}\n\nAddresses:</b>\n<i>IPv4: <code>${device.addresses[0]}</code>\nIPv6: <code>${device.addresses[1]}</code></i>`,
+              {
+                parse_mode: "HTML",
+              }
+            );
           })
         );
       } catch (error) {
