@@ -109,9 +109,9 @@ bot.command("list", async (ctx) => {
               (currentTime.getTime() - lastSeen.getTime()) / (1000 * 60);
             let isOnline;
             if (diffInMinutes <= 5) {
-              isOnline = `🟢 Connected:`;
+              isOnline = `🟢 Connected`;
             } else {
-              isOnline = `🔴 Disconnected:`;
+              isOnline = `🔴 Disconnected`;
             }
             await ctx.reply(
               `${isOnline}\n\n<b>${device.hostname}\n\nAddresses:</b>\n<i>IPv4: <code>${device.addresses[0]}</code>\nIPv6: <code>${device.addresses[1]}</code></i>`,
