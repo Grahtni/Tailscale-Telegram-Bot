@@ -48,7 +48,7 @@ bot.command("cmd", async (ctx) => {
       .catch((e) => console.error(e));
   } else {
     await ctx
-      .reply("*Commands*\n\n_1. /list List devices\n2. /last Last 3 joins_", {
+      .reply("*Commands*\n\n_1. /list List devices_", {
         parse_mode: "Markdown",
       })
       .then(console.log("Commands list sent to", ctx.from.id))
@@ -66,6 +66,7 @@ bot.command("list", async (ctx) => {
       .catch((e) => console.error(e));
   } else {
     const apiPath = `/api/v2/tailnet/${process.env.TAILNET}/devices`;
+
     async function getDevices() {
       const options = {
         hostname: "api.tailscale.com",
@@ -113,8 +114,25 @@ bot.command("list", async (ctx) => {
             } else {
               isOnline = `🔴 Disconnected`;
             }
+            const ISTDateString = lastSeen.toLocaleDateString("en-US", {
+              timeZone: "Asia/Kolkata",
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+            });
+
+            const ISTTimeString = lastSeen
+              .toLocaleTimeString("en-US", {
+                timeZone: "Asia/Kolkata",
+                hour12: true,
+              })
+              .replace(/:\d{2}\s/, " ");
+
+            const ISTDateTimeString =
+              ISTDateString + " " + ISTTimeString + " IST";
+
             await ctx.reply(
-              `${isOnline}\n\n<b>${device.hostname}\n\nAddresses:</b>\n<i>IPv4: <code>${device.addresses[0]}</code>\nIPv6: <code>${device.addresses[1]}</code></i>`,
+              `${isOnline}\n\n<b>${device.hostname}\n\nAddresses:</b>\n<i>IPv4: <code>${device.addresses[0]}</code>\nIPv6: <code>${device.addresses[1]}</code></i>\n\n<b>Last seen:</b>\n<i>${ISTDateTimeString}</i>`,
               {
                 parse_mode: "HTML",
               }
