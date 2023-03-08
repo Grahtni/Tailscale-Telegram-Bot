@@ -56,7 +56,7 @@ bot.command("cmd", async (ctx) => {
   }
 });
 
-bot.command("list", async (ctx) => {
+bot.command(["list", "l", "ls"], async (ctx) => {
   if (!ctx.config.isDeveloper) {
     await ctx
       .reply("*You are not authorized to use this command.*", {
