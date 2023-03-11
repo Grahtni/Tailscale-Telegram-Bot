@@ -8,11 +8,11 @@ const bot = new Bot(process.env.BOT_TOKEN);
 
 // Admin
 
-const BOT_DEVELOPER = 0 | process.env.BOT_DEVELOPER;
+const authorizedUsers = process.env.BOT_DEVELOPER?.split(",").map(Number) || [];
 bot.use(async (ctx, next) => {
   ctx.config = {
-    botDeveloper: BOT_DEVELOPER,
-    isDeveloper: ctx.from?.id === BOT_DEVELOPER,
+    botDevelopers: authorizedUsers,
+    isDeveloper: authorizedUsers.includes(ctx.chat?.id),
   };
   await next();
 });
@@ -20,12 +20,19 @@ bot.use(async (ctx, next) => {
 // Commands
 
 bot.command("start", async (ctx) => {
+  if (!ctx.chat.type == "private") {
+    await bot.api.sendMessage(
+      ctx.chat.id,
+      "*Channels and groups are not supported presently.*",
+      { parse_mode: "Markdown" }
+    );
+    return;
+  }
   await ctx
     .reply("*Welcome!* ✨\n_This is a private utility bot for @anzubo._", {
       parse_mode: "Markdown",
     })
-    .then(console.log("New user added:\n", ctx.from))
-    .catch((e) => console.error(e));
+    .then(console.log("New user added:\n", ctx.chat));
 });
 
 bot.command("help", async (ctx) => {
@@ -34,36 +41,54 @@ bot.command("help", async (ctx) => {
       "*@anzubo Project.*\n\n_This is a utility bot for managing Tailscale used by @anzubo.\nUnauthorized use is not permitted._",
       { parse_mode: "Markdown" }
     )
-    .then(console.log("Help command sent to", ctx.from.id))
-    .catch((e) => console.error(e));
+    .then(console.log("Help command sent to", ctx.chat.id));
 });
 
+// Misc
+
 bot.command("cmd", async (ctx) => {
+  if (!ctx.chat.type == "private") {
+    await bot.api.sendMessage(
+      ctx.chat.id,
+      "*Channels and groups are not supported presently.*",
+      { parse_mode: "Markdown" }
+    );
+    return;
+  }
   if (!ctx.config.isDeveloper) {
     await ctx
       .reply("*You are not authorized to use this command.*", {
         parse_mode: "Markdown",
       })
-      .then(console.log("Unauthorized use by", ctx.from.id))
+      .then(console.log("Unauthorized use by", ctx.chat.id))
       .catch((e) => console.error(e));
   } else {
     await ctx
       .reply("*Commands*\n\n_1. /list List devices_", {
         parse_mode: "Markdown",
       })
-      .then(console.log("Commands list sent to", ctx.from.id))
+      .then(console.log("Commands list sent to", ctx.chat.id))
       .catch((e) => console.error(e));
   }
 });
 
+// Tailscale
+
 bot.command(["list", "l", "ls"], async (ctx) => {
+  if (!ctx.chat.type == "private") {
+    await bot.api.sendMessage(
+      ctx.chat.id,
+      "*Channels and groups are not supported presently.*",
+      { parse_mode: "Markdown" }
+    );
+    return;
+  }
   if (!ctx.config.isDeveloper) {
     await ctx
       .reply("*You are not authorized to use this command.*", {
         parse_mode: "Markdown",
       })
-      .then(console.log("Unauthorized use by", ctx.from.id))
-      .catch((e) => console.error(e));
+      .then(console.log("Unauthorized use by", ctx.chat.id));
   } else {
     const apiPath = `/api/v2/tailnet/${process.env.TAILNET}/devices`;
 
@@ -154,12 +179,12 @@ bot.command(["list", "l", "ls"], async (ctx) => {
           console.log("Error sending message: ", error);
           await ctx.reply(`*Error contacting Telegram.*`, {
             parse_mode: "Markdown",
-            reply_to_message_id: ctx.msg.message_id,
+            reply_to_message_id: ctx.message.message_id,
           });
         } else {
           await ctx.reply(`*An error occurred: ${error.message}*`, {
             parse_mode: "Markdown",
-            reply_to_message_id: ctx.msg.message_id,
+            reply_to_message_id: ctx.message.message_id,
           });
         }
         console.log(`Error sending message: ${error.message}`);
@@ -168,7 +193,7 @@ bot.command(["list", "l", "ls"], async (ctx) => {
         console.log(`An error occured:`, error);
         await ctx.reply(`*An error occurred.*\n_Error: ${error.message}_`, {
           parse_mode: "Markdown",
-          reply_to_message_id: ctx.msg.message_id,
+          reply_to_message_id: ctx.message.message_id,
         });
         return;
       }
@@ -178,88 +203,11 @@ bot.command(["list", "l", "ls"], async (ctx) => {
 
 // Messages
 
-bot.on("msg", async (ctx) => {
-  // Logging
-
-  const from = ctx.from;
-  const name =
-    from.last_name === undefined
-      ? from.first_name
-      : `${from.first_name} ${from.last_name}`;
-  console.log(
-    `From: ${name} (@${from.username}) ID: ${from.id}\nMessage: ${ctx.msg.text}`
+bot.on("message", async (ctx) => {
+  await ctx.reply(
+    "*Direct messages are not supported. Please use commands to interact.*",
+    { parse_mode: "Markdown" }
   );
-
-  // Logic
-  if (!ctx.config.isDeveloper) {
-    await ctx.reply("_You don't have authorization to use this bot._", {
-      reply_to_message_id: ctx.msg.message_id,
-      parse_mode: "Markdown",
-    });
-  } else {
-    try {
-      const statusMessage = await ctx.reply(`*Downloading*`, {
-        parse_mode: "Markdown",
-      });
-      async function deleteMessageWithDelay(fromId, messageId, delayMs) {
-        return new Promise((resolve, reject) => {
-          setTimeout(() => {
-            bot.api
-              .deleteMessage(fromId, messageId)
-              .then(() => resolve())
-              .catch((error) => reject(error));
-          }, delayMs);
-        });
-      }
-      await deleteMessageWithDelay(ctx.from.id, statusMessage.message_id, 3000);
-      await Promise.race([
-        new Promise((_, reject) =>
-          setTimeout(
-            () => reject(new Error("Function execution timed out.")),
-            7000
-          )
-        ),
-        new Promise(async (resolve) => {
-          await ctx
-            .reply("Processing", {
-              reply_to_message_id: ctx.msg.message_id,
-              parse_mode: "Markdown",
-            })
-            .then(() =>
-              console.log(`Function executed successfully from ${ctx.from.id}`)
-            );
-
-          resolve();
-        }),
-      ]);
-    } catch (error) {
-      if (error instanceof GrammyError) {
-        if (error.message.includes("Forbidden: bot was blocked by the user")) {
-          console.log("Bot was blocked by the user");
-        } else if (error.message.includes("Call to 'sendMessage' failed!")) {
-          console.log("Error sending message: ", error);
-          await ctx.reply(`*Error contacting Telegram.*`, {
-            parse_mode: "Markdown",
-            reply_to_message_id: ctx.msg.message_id,
-          });
-        } else {
-          await ctx.reply(`*An error occurred: ${error.message}*`, {
-            parse_mode: "Markdown",
-            reply_to_message_id: ctx.msg.message_id,
-          });
-        }
-        console.log(`Error sending message: ${error.message}`);
-        return;
-      } else {
-        console.log(`An error occured:`, error);
-        await ctx.reply(`*An error occurred.*\n_Error: ${error.message}_`, {
-          parse_mode: "Markdown",
-          reply_to_message_id: ctx.msg.message_id,
-        });
-        return;
-      }
-    }
-  }
 });
 
 // Error
